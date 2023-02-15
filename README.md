@@ -1,2 +1,4 @@
 # bmgpWallet
-Wallet App For Bitmonky's BMGP  Token
+Wallet App For PeerTree's BMGP  Token
+
+
