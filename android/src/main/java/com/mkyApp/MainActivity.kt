@@ -33,7 +33,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.html.*
 import MkyECC
-import MkyResult
+import MkyWallet
 import io.ktor.server.request.*
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -45,7 +45,7 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.utils.EmptyContent.contentType
 import io.ktor.http.*
 import io.ktor.serialization.gson.*
-import okhttp3.OkHttp
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -64,12 +64,13 @@ class MainActivity : AppCompatActivity() {
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
 
-
         val mkyECC = MkyECC()
-        var mkr = MkyResult()
-        mkr.publicKey = "Some Shit Woot"
-        mkr = mkyECC.doTest()
-        sayShit(binding.root,mkr.isValid.toString()+mkr.address)
+        var mkw = MkyWallet()
+        val privateKey = "e3df06c49fe3423d88ac118f6d9a096ca2dd36097c4fde4f06db7ab07030ec0e"
+        val publicKey = "0490f7f3f80059407bb28d0139ca3f68c18d11a9a1dd740c647984453a284ff5a98fd2e3c1f66cc25bab5a158292eae0402e68361f477f61fa7b68a05a1cd5e8aa"
+        var stoken = mkyECC.signToken("Message for signing",privateKey,publicKey)
+
+        sayShit(binding.root,publicKey)
 
         var fileName = "bitMonky/bmgp.wallet"
         var fileContent = "xohooeo"
@@ -106,11 +107,11 @@ class MainActivity : AppCompatActivity() {
                 call.respondText(mkyWalletHTML, io.ktor.http.ContentType.Text.Html)
               }
               get("/netREQ") {
-                  var result = doHandleRequest(call.request.uri,mkr)
+                  var result = doHandleRequest(call.request.uri,mkw)
                   call.respondText(result)
               }
               post("/netREQ"){
-                  var result = doHandleRequest(call.receiveText(),mkr)
+                  var result = doHandleRequest(call.receiveText(),mkw)
                   call.respondText(result)}
             }
           }
@@ -123,7 +124,8 @@ class MainActivity : AppCompatActivity() {
           binding.fab.setOnClickListener { view ->
             Snackbar.make(view, "BitMonky For The Win!", Snackbar.LENGTH_LONG)
               .setAction("Action", null).show()
-            startActivity(browserIntent)
+            sayShit(binding.root,stoken)
+            //startActivity(browserIntent)
           }
 
           //sayShit(binding.root,"Monky Server Shit Good!")
@@ -156,11 +158,11 @@ class MainActivity : AppCompatActivity() {
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
     }
-    private suspend fun doHandleRequest(j:String,mkyD:MkyResult): String {
+    private suspend fun doHandleRequest(j:String,mkyD:MkyWallet): String {
         var  result = j
         return doSendPostRequest(mkyD)
     }
-    private suspend fun doSendPostRequest(mkyD:MkyResult):String {
+    private suspend fun doSendPostRequest(mkyD:MkyWallet):String {
       val client = HttpClient(CIO)
       val response: HttpResponse = client.post(){
           url("https://www.bitmonky.com/")
