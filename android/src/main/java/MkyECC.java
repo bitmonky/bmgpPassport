@@ -1,6 +1,10 @@
 import com.google.common.io.BaseEncoding;
 import org.bitcoinj.core.ECKey;
+import org.bitcoinj.core.LegacyAddress;
+import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.params.MainNetParams;
+
 import java.math.BigInteger;
 public class MkyECC {
     public String signToken(String tok,String inPrivKey,String inPubKey) {
@@ -12,5 +16,18 @@ public class MkyECC {
           + "\"signature\"" + BaseEncoding.base16().lowerCase().encode(sig.encodeToDER())
           + "\",\"publicKey\":\"" + inPubKey + "\"}";
         return res;
+    }
+    public String doCreateWallet() {
+      NetworkParameters params = MainNetParams.get();
+      ECKey myKeys = new ECKey();
+      myKeys = myKeys.decompress();
+      String publicKey  = myKeys.getPublicKeyAsHex();
+      String privateKey = myKeys.getPrivateKeyAsHex();
+      String address = LegacyAddress.fromKey(params, myKeys).toString();
+      ECKey myCipher = new ECKey();
+      myCipher = myCipher.decompress();
+      String cipher  = LegacyAddress.fromKey(params, myCipher).toString();
+      return "{\"ownMUID\":\"" + address + "\",\"publicKey\":\"" + publicKey + "\","
+              + "\"privateKey\":\"" + privateKey +"\","+ "\"walletCipher\":\"" + cipher +"\"}";
     }
 }
