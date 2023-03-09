@@ -44,6 +44,7 @@ import io.ktor.client.plugins.api.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.utils.EmptyContent.contentType
 import io.ktor.http.*
+
 import io.ktor.serialization.gson.*
 
 
@@ -51,6 +52,17 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
+
+    val mkyECC = MkyECC()
+    var mkw = MkyWallet()
+
+    data class MkyMsg(var sessTok : String)  {
+        var address: String = ""
+        var pubKey : String = ""
+        var sesSig : String = ""
+        var action : String = ""
+        var parms  : String = ""
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,23 +76,20 @@ class MainActivity : AppCompatActivity() {
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
 
-        val mkyECC = MkyECC()
-        var mkw = MkyWallet()
         val privateKey = "e3df06c49fe3423d88ac118f6d9a096ca2dd36097c4fde4f06db7ab07030ec0e"
         val publicKey = "0490f7f3f80059407bb28d0139ca3f68c18d11a9a1dd740c647984453a284ff5a98fd2e3c1f66cc25bab5a158292eae0402e68361f477f61fa7b68a05a1cd5e8aa"
         var stoken = mkyECC.signToken("Message for signing",privateKey,publicKey)
 
-        sayShit(binding.root,publicKey)
+        sayShit(publicKey)
+        doOpenWallet()
 
-        var fileName = "bitMonky/bmgp.wallet"
-        var fileContent = "xohooeo"
         var mkyWalletHTML = "<!doctype html>"
         mkyWalletHTML += "<html class=\"pgHTML\" lang=\"en\">"
         mkyWalletHTML += "  <head>"
         mkyWalletHTML += "    <meta charset=\"utf-8\"/>"
         mkyWalletHTML += "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=2, user-scalable=1,target-densitydpi=device-dpi\" />"
         mkyWalletHTML += "    <link rel=\"stylesheet\" href=\"https://www.bitmonky.com/whzon/mblp/phone.css?v=1.0\"/>"
-        mkyWalletHTML += "    <script src=\"https://www.bitmonky.com/bitMDis/pWalletJS.php\"></script>"
+        mkyWalletHTML += "    <script src=\"https://www.bitmonky.com/bitMDis/pWalletJSM.php\"></script>"
         mkyWalletHTML += "  </head>"
         mkyWalletHTML += "<body class=\"pgBody\" style=\"background:#343434;margin:5%;padding:1.5em;\" onload=\"init();\">"
         mkyWalletHTML += "  <img style=\"float:left;margin:-3em 1em 1.5em -1em;height:6.5em;width:6.5em;border-radius:50%;\" "
@@ -91,27 +100,18 @@ class MainActivity : AppCompatActivity() {
         mkyWalletHTML += "  <div ID=\"accountInfo\"></div>"
         mkyWalletHTML += "</body></html"
 
-        var myExternalFile:File = File(getExternalStorageDirectory() ,fileName)
-        try {
-            val fileOutPutStream = FileOutputStream(myExternalFile)
-            fileOutPutStream.write(fileContent.toByteArray())
-            fileOutPutStream.close()
-        } catch (e: IOException) {
-            //sayShit(binding.root,"Monky Shit Fail!")
-            e.printStackTrace()
-        }
         try {
           var server =  embeddedServer(Netty, port = 8080,host = "127.0.0.1") {
             routing {
               get("/") {
                 call.respondText(mkyWalletHTML, io.ktor.http.ContentType.Text.Html)
               }
-              get("/netREQ") {
-                  var result = doHandleRequest(call.request.uri,mkw)
-                  call.respondText(result)
+              get("/netREQ/{msg}") {
+                  var result = doHandleRequest(call.parameters["msg"].toString())
+                  call.respondText(call.parameters["msg"].toString())
               }
               post("/netREQ"){
-                  var result = doHandleRequest(call.receiveText(),mkw)
+                  var result = doHandleRequest(call.receiveText())
                   call.respondText(result)}
             }
           }
@@ -120,19 +120,18 @@ class MainActivity : AppCompatActivity() {
           }
 
           val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://localhost:8080"))
-
           binding.fab.setOnClickListener { view ->
             Snackbar.make(view, "BitMonky For The Win!", Snackbar.LENGTH_LONG)
               .setAction("Action", null).show()
-            sayShit(binding.root,stoken)
-            //startActivity(browserIntent)
+            sayShit(stoken)
+            startActivity(browserIntent)
           }
 
           //sayShit(binding.root,"Monky Server Shit Good!")
 
         }
         catch (e: Exception ){
-            sayShit(binding.root,"Monky Server Shit Fail!")
+            sayShit("Monky Server Shit Fail!")
         }
 
     }
@@ -158,11 +157,60 @@ class MainActivity : AppCompatActivity() {
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
     }
-    private suspend fun doHandleRequest(j:String,mkyD:MkyWallet): String {
+    private suspend fun doHandleRequest(j:String): String {
         var  result = j
-        return doSendPostRequest(mkyD)
+        //doSendPostRequest(mkyD);
+        return "OK"
     }
-    private suspend fun doSendPostRequest(mkyD:MkyWallet):String {
+    private fun doOpenWallet(){
+        var fileName = "bitMonky/bmgpWallet.txt"
+
+        var fWal:File = File(getExternalStorageDirectory() ,fileName)
+        var myWal:String? = null
+        if (fWal.exists()) {
+            myWal = doReadWallet(fWal)
+            val mkr = mkw.doParse(myWal)
+            sayShit("Wallet Address: " + mkr + mkw.ownerMUID)
+        }
+        else {
+            try {
+              var fileContent = mkyECC.doCreateWallet()
+              val fileOutPutStream = FileOutputStream(fWal)
+              fileOutPutStream.write(fileContent.toByteArray())
+              fileOutPutStream.close()
+              val mkr = mkw.doParse(fileContent)
+              //sayShit("Monky Write Wallet OK!")
+            } catch (e: IOException) {
+                sayShit("Monky Write Wallet Fail!")
+                e.printStackTrace()
+            }
+        }
+    }
+    private fun doReadWallet(f:File):String? {
+        var fileInputStream =FileInputStream(f)
+        var inputStreamReader: InputStreamReader = InputStreamReader(fileInputStream)
+        val bufferedReader: BufferedReader = BufferedReader(inputStreamReader)
+        val sb: StringBuilder = StringBuilder()
+        var text: String? = null
+        while ({ text = bufferedReader.readLine(); text }() != null) {
+            sb.append(text)
+        }
+        fileInputStream.close()
+        return sb.toString()
+    }
+    private suspend fun doMakeReq(action:String,res:String,parms:String,service:String){
+        val mkyECC = MkyECC()
+        val wal    = MkyWallet()
+        val stok = "this.ownMUID+Date.now()"
+        val msg = MkyMsg(stok)
+        msg.address = "this.ownMUID"
+        msg.pubKey  = "this.publicKey"
+        msg.sesSig  = mkyECC.signToken(stok,"privKey","pubKey")
+        msg.action  = action
+        msg.parms   = parms
+        this.doSendPostRequest(msg) //,res,service);
+    }
+    private suspend fun doSendPostRequest(mkyD: MkyMsg):String {
       val client = HttpClient(CIO)
       val response: HttpResponse = client.post(){
           url("https://www.bitmonky.com/")
@@ -172,8 +220,8 @@ class MainActivity : AppCompatActivity() {
       client.close()
       return response.bodyAsText()
     }
-    private fun sayShit(mView: View, shit: String): Int {
-      Snackbar.make(mView, shit, Snackbar.LENGTH_LONG)
+    private fun sayShit(shit: String): Int {
+      Snackbar.make(binding.root, shit, 8000)
         .setAction("Action", null).show()
       return 1
     }
