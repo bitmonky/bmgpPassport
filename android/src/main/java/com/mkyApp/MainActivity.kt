@@ -47,11 +47,16 @@ class MainActivity : AppCompatActivity() {
     var cReq   = MkyClientReq()
 
     data class MkyMsg(var sessTok : String)  {
-        var address: String = ""
+        var Address: String = ""
         var pubKey : String = ""
         var sesSig : String = ""
         var action : String = ""
         var parms  : String = ""
+        fun  toJSON():String{
+          return "{\"Address\":\"" + Address + "\"," +
+            "\"pubKey\":\"" + pubKey + "\",\"sesSig\"" + sesSig + "," +
+            "\"action\":\"" + action + "\",\"parms\"" + parms + "}"
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,6 +93,7 @@ class MainActivity : AppCompatActivity() {
           CoroutineScope(Dispatchers.IO).launch {
             server.start(wait = false)
           }
+
           val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://localhost:8080"))
           binding.fab.setOnClickListener { view ->
             Snackbar.make(view, "BitMonky For The Win!", Snackbar.LENGTH_LONG)
@@ -172,27 +178,35 @@ class MainActivity : AppCompatActivity() {
         j = j.replace("%2F","/")
 
         cReq.doParse(j)
-        return  doMakeReq() + "Action: " +cReq.req
+        return  doMakeReq()
     }
     private suspend fun doMakeReq(): String {
         val stok = mkw.ownMUID + mkyDate()
         val msg = MkyMsg(stok)
-        msg.address = mkw.ownMUID
+        msg.Address = mkw.ownMUID
         msg.pubKey  = mkw.publicKey
         msg.sesSig  = mkyECC.signToken(stok,mkw.privateKey,mkw.publicKey)
         msg.action  = cReq.req
         msg.parms   = cReq.parms
-        return doSendPostRequest(msg)
+        return doSendPostRequest(msg) //+ msg.toJSON()
+        //return "OK: "+msg.toJSON();
     }
     private suspend fun doSendPostRequest(msg: MkyMsg):String {
-      val client = HttpClient(CIO)
-      val response: HttpResponse = client.post(){
-          url(cReq.service)
-          contentType(io.ktor.http.ContentType.Application.Json)
-          setBody(msg)
+      try {
+          val client = HttpClient(CIO)
+
+          val response: HttpResponse = client.post() {
+              url(cReq.service)
+              contentType(io.ktor.http.ContentType.Application.Json)
+              setBody(msg.toJSON())
+          }
+          client.close()
+          return addMUID(response.bodyAsText())
       }
-      client.close()
-      return response.bodyAsText()
+      catch(e: Exception) {return e.toString()}
+    }
+    private fun addMUID(str: String): String{
+        return "{\"pMUID\":\"" + mkw.ownMUID + "\"" + str.replaceFirst("{",",")
     }
     private fun sayShit(shit: String): Int {
       Snackbar.make(binding.root, shit, 8000)
@@ -213,7 +227,9 @@ class MainActivity : AppCompatActivity() {
         mkyWalletHTML += "       src=\"https://image0.bitmonky.com/img/bitGoldCoin.png\">"
         mkyWalletHTML += "  <div align=\"right\" ID=\"loginSpot\"><input ID=\"loginBut\" type=\"button\" value=\" BitMonky Login \" "
         mkyWalletHTML += "       onClick=\"doLogin()\"/></div>"
-        mkyWalletHTML += "  <br clear=\"left\"/><h1>Welcome To Your BitMonky Wallet Server</h1>\n"
+        mkyWalletHTML += "  <br clear=\"left\"/><div class=\"infoCardClear\" "
+        mkyWalletHTML += "  style=\"background:#222324;margin-bottom:0em;\">"
+        mkyWalletHTML += "  <h2>BitMonky Android Passport</h2></div>\n"
         mkyWalletHTML += "  <div ID=\"accountInfo\"></div>"
         mkyWalletHTML += "</body></html"
         return mkyWalletHTML
