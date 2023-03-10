@@ -1,7 +1,7 @@
 import org.json.*;
 public class MkyClientReq {
     public String req = "Not Set";
-    public String parms = "Not Set";
+    public String parms = ":null";
     public String endPoint = "/whzon/gold/netWalletAPI.php";
     public String host     = "www.bitmonky.com";
     public String port     = "";
