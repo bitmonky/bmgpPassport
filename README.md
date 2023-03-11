@@ -1,4 +1,4 @@
-# bmgpWallet
-Wallet App For PeerTree's BMGP  Token
+# bmgpPassport
+Wallet App and password free web services 
 
 
