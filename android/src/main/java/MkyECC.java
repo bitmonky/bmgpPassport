@@ -12,9 +12,9 @@ public class MkyECC {
         ECKey signingKey = ECKey.fromPrivate(privKey);
         Sha256Hash msgHash = Sha256Hash.of(tok.getBytes());
         ECKey.ECDSASignature sig = signingKey.sign(msgHash);
-        String res = "'{\"token\":\"" + tok + "\","
-          + "\"signature\"" + BaseEncoding.base16().lowerCase().encode(sig.encodeToDER())
-          + "\",\"publicKey\":\"" + inPubKey + "\"}";
+        String res = "\"sesTok\":\"" + tok + "\","
+          + "\"sesSig\":\"" + BaseEncoding.base16().lowerCase().encode(sig.encodeToDER())
+          + "\",\"pubKey\":\"" + inPubKey + "\"";
         return res;
     }
     public String doCreateWallet() {
