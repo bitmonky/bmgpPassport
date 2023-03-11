@@ -54,8 +54,8 @@ class MainActivity : AppCompatActivity() {
         var parms  : String = ""
         fun  toJSON():String{
           return "{\"Address\":\"" + Address + "\"," +
-            "\"pubKey\":\"" + pubKey + "\",\"sesSig\"" + sesSig + "," +
-            "\"action\":\"" + action + "\",\"parms\"" + parms + "}"
+            "\"pubKey\":\"" + pubKey + "\"," + sesSig + "," +
+            "\"action\":\"" + action + "\",\"parms\":" + parms + "}"
         }
     }
 
