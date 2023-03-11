@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">bitMonky</string>
+    <string name="action_settings">Settings</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">BitMonky Android Passport</string>
+    <string name="second_fragment_label">Second Monkey Lable</string>
+    <string name="next">Open Passport</string>
+    <string name="previous">Previous Monkey</string>
+
+    <string name="hello_first_fragment">Welcome Citizen!</string>
+    <string name="hello_second_fragment">Hello second Bitmonky. Arg: %1$s</string>
+</resources>
