@@ -36,6 +36,7 @@ Project File Imports
 import MkyECC
 import MkyWallet
 import MkyClientReq
+import android.graphics.Color
 
 class MainActivity : AppCompatActivity() {
 
@@ -64,13 +65,12 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         setSupportActionBar(binding.toolbar)
 
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
-
+        binding.root.setBackgroundColor(Color.rgb(22, 23, 24))
         doOpenWallet()
         /*
         Start Local http service for Wallet
@@ -95,10 +95,8 @@ class MainActivity : AppCompatActivity() {
           }
 
           val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://localhost:8080"))
-          binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "BitMonky For The Win!", Snackbar.LENGTH_LONG)
-              .setAction("Action", null).show()
-            startActivity(browserIntent)
+          binding.fab.setOnClickListener {
+              sayShit("Passport: " + mkw.ownMUID)
           }
           //sayShit(binding.root,"Monky Server Shit Good!")
         }
