@@ -1,4 +1,4 @@
-package com.example.firstapp
+package com.bitmonky.passport
 
 import android.content.Intent
 import android.net.Uri
@@ -10,7 +10,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import com.example.firstapp.databinding.ActivityMainBinding
+import com.bitmonky.passport.databinding.ActivityMainBinding
 import com.google.android.material.snackbar.Snackbar
 
 import io.ktor.server.engine.*
@@ -43,9 +43,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
 
-    val mkyECC = MkyECC()
-    var mkw    = MkyWallet()
-    var cReq   = MkyClientReq()
+    private val mkyECC = MkyECC()
+    private var mkw    = MkyWallet()
+    private var cReq   = MkyClientReq()
+
+    private val fileName  = "bmgpWallet.txt"
+    private val indexJS   = "https://www.bitmonky.com/bitMDis/pWalletJSM.php"
+    private val indexCSS  = "https://www.bitmonky.com/whzon/mblp/phone.css?v=1.0"
+    private val indexICON = "https://image0.bitmonky.com/img/bitGoldCoin.png"
 
     data class MkyMsg(var sessTok : String)  {
         var Address: String = ""
@@ -54,9 +59,9 @@ class MainActivity : AppCompatActivity() {
         var action : String = ""
         var parms  : String = ""
         fun  toJSON():String{
-          return "{\"Address\":\"" + Address + "\"," +
-            "\"pubKey\":\"" + pubKey + "\"," + sesSig + "," +
-            "\"action\":\"" + action + "\",\"parms\":" + parms + "}"
+            return "{\"Address\":\"" + Address + "\"," +
+                    "\"pubKey\":\"" + pubKey + "\"," + sesSig + "," +
+                    "\"action\":\"" + action + "\",\"parms\":" + parms + "}"
         }
     }
 
@@ -76,29 +81,29 @@ class MainActivity : AppCompatActivity() {
         Start Local http service for Wallet
         */
         try {
-          var server =  embeddedServer(Netty, port = 8080,host = "127.0.0.1") {
-            routing {
-              get("/") {
-                call.respondText(getIndexPgHTML(), io.ktor.http.ContentType.Text.Html)
-              }
-              get("/netREQ/{msg}") {
-                  var result = doHandleRequest(call.parameters["msg"].toString())
-                  call.respondText(result)
-              }
-              post("/netREQ"){
-                  var result = doHandleRequest(call.receiveText())
-                  call.respondText(result)}
+            var server =  embeddedServer(Netty, port = 8080,host = "127.0.0.1") {
+                routing {
+                    get("/") {
+                        call.respondText(getIndexPgHTML(), io.ktor.http.ContentType.Text.Html)
+                    }
+                    get("/netREQ/{msg}") {
+                        var result = doHandleRequest(call.parameters["msg"].toString())
+                        call.respondText(result)
+                    }
+                    post("/netREQ"){
+                        var result = doHandleRequest(call.receiveText())
+                        call.respondText(result)}
+                }
             }
-          }
-          CoroutineScope(Dispatchers.IO).launch {
-            server.start(wait = false)
-          }
+            CoroutineScope(Dispatchers.IO).launch {
+                server.start(wait = false)
+            }
 
-          val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://localhost:8080"))
-          binding.fab.setOnClickListener {
-              sayShit("Passport: " + mkw.ownMUID)
-          }
-          //sayShit(binding.root,"Monky Server Shit Good!")
+            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://localhost:8080"))
+            binding.fab.setOnClickListener {
+                sayShit("Passport: " + mkw.ownMUID)
+            }
+            //sayShit(binding.root,"Monky Server Shit Good!")
         }
         catch (e: Exception ){
             sayShit("Monky Server Shit Fail!")
@@ -130,7 +135,7 @@ class MainActivity : AppCompatActivity() {
         return currentDate + currentTime
     }
     private fun doOpenWallet(){
-        var fileName = "bmgpWallet.txt"
+
         try {
             var fWal: File = getFileStreamPath(fileName) //File(getExternalStorageDirectory() ,fileName)
 
@@ -154,7 +159,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         catch(e: Exception) {sayShit(e.toString())
-             return
+            return
         }
     }
     private fun doReadWallet(f:File):String? {
@@ -169,6 +174,18 @@ class MainActivity : AppCompatActivity() {
         fileInputStream.close()
         return sb.toString()
     }
+    private fun doSendPassportBCK(): String{
+        return try {
+            var fWal: File = getFileStreamPath(fileName) //File(getExternalStorageDirectory() ,fileName)
+            if (fWal.exists()) {
+                doReadWallet(fWal).toString()
+            } else {
+                "Wallet File Not Found!"
+            }
+        } catch(e: Exception){
+            e.toString()
+        }
+    }
     private suspend fun doHandleRequest(inJ:String): String {
         var j = inJ.replace("msg=","")
         j =  j.replace("%3A",":")
@@ -176,6 +193,9 @@ class MainActivity : AppCompatActivity() {
         j = j.replace("%2F","/")
 
         cReq.doParse(j)
+        if (cReq.req == "sendPassportBCK"){
+           return doSendPassportBCK();
+        }
         return  doMakeReq()
     }
     private suspend fun doMakeReq(): String {
@@ -190,26 +210,26 @@ class MainActivity : AppCompatActivity() {
         //return "OK: "+msg.toJSON();
     }
     private suspend fun doSendPostRequest(msg: MkyMsg):String {
-      try {
-          val client = HttpClient(CIO)
+        try {
+            val client = HttpClient(CIO)
 
-          val response: HttpResponse = client.post() {
-              url(cReq.service)
-              contentType(io.ktor.http.ContentType.Application.Json)
-              setBody(msg.toJSON())
-          }
-          client.close()
-          return addMUID(response.bodyAsText())
-      }
-      catch(e: Exception) {return e.toString()}
+            val response: HttpResponse = client.post() {
+                url(cReq.service)
+                contentType(io.ktor.http.ContentType.Application.Json)
+                setBody(msg.toJSON())
+            }
+            client.close()
+            return addMUID(response.bodyAsText())
+        }
+        catch(e: Exception) {return e.toString()}
     }
     private fun addMUID(str: String): String{
         return "{\"pMUID\":\"" + mkw.ownMUID + "\"" + str.replaceFirst("{",",")
     }
     private fun sayShit(shit: String): Int {
-      Snackbar.make(binding.root, shit, 8000)
-        .setAction("Action", null).show()
-      return 1
+        Snackbar.make(binding.root, shit, 8000)
+            .setAction("Action", null).show()
+        return 1
     }
     private fun getIndexPgHTML(): String {
         var mkyWalletHTML = "<!doctype html>"
@@ -217,20 +237,27 @@ class MainActivity : AppCompatActivity() {
         mkyWalletHTML += "  <head>"
         mkyWalletHTML += "    <meta charset=\"utf-8\"/>"
         mkyWalletHTML += "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=2, user-scalable=1,target-densitydpi=device-dpi\" />"
-        mkyWalletHTML += "    <link rel=\"stylesheet\" href=\"https://www.bitmonky.com/whzon/mblp/phone.css?v=1.0\"/>"
-        mkyWalletHTML += "    <script src=\"https://www.bitmonky.com/bitMDis/pWalletJSM.php\"></script>"
+        mkyWalletHTML += "    <link rel=\"stylesheet\" href=\"$indexCSS\"/>"
+        mkyWalletHTML += "    <script src=\"$indexJS\"></script>"
         mkyWalletHTML += "  </head>"
-        mkyWalletHTML += "<body class=\"pgBody\" style=\"background:#343434;margin:5%;padding:1.5em;\" onload=\"init();\">"
+        mkyWalletHTML += "<body class=\"pgBody\" style=\"background:#232425;margin-top:5%;padding:1em;\" onload=\"init();\">"
         mkyWalletHTML += "  <img style=\"float:left;margin:-3em 1em 1.5em -1em;height:6.5em;width:6.5em;border-radius:50%;\" "
-        mkyWalletHTML += "       src=\"https://image0.bitmonky.com/img/bitGoldCoin.png\">"
+        mkyWalletHTML += "       src=\"$indexICON\">"
         mkyWalletHTML += "  <div align=\"right\" ID=\"loginSpot\"><input ID=\"loginBut\" type=\"button\" value=\" BitMonky Login \" "
         mkyWalletHTML += "       onClick=\"doLogin()\"/></div>"
         mkyWalletHTML += "  <br clear=\"left\"/><div class=\"infoCardClear\" "
-        mkyWalletHTML += "  style=\"background:#222324;margin-bottom:0em;\">"
-        mkyWalletHTML += "  <h2>BitMonky Android Passport</h2></div>\n"
+        mkyWalletHTML += "  style=\"background:#151617;margin-bottom:0em;\">"
+        mkyWalletHTML += "  <h2 style=\"color:darkKhaki\">BitMonky Android Passport</h2></div>\n"
         mkyWalletHTML += "  <div ID=\"accountInfo\"></div>"
-        mkyWalletHTML += "</body></html"
-        return mkyWalletHTML
+        mkyWalletHTML += "  <div align=\"right\" ID=\"footerDIV\">" +
+          "  <div ID=\"saveKeyBut\" style=\"border-radius:.35em;margin-top:1.4em;" +
+          "     display:inline-block;padding:.4em 1em .4em 1em;background:black;\">\n" +
+          "  <a style=\"font-size:larger;color:darkKhaki;\"" +
+          "  ID=\"download_link\" download=\"myBitMonkyPassport.key\"\n" +
+          "  href='/netREQ/msg={\"req\":\"sendPassportBCK\"}'> Backup Passport </a>\n" +
+          "  </div>\n" +
+          "</div></body></html>"
+         return mkyWalletHTML
     }
     private fun testSignCase(): String {
         val privateKey = "e3df06c49fe3423d88ac118f6d9a096ca2dd36097c4fde4f06db7ab07030ec0e"

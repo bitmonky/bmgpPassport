@@ -1,4 +1,4 @@
-package com.example.firstapp
+package com.bitmonky.passport
 
 import android.content.Intent
 import android.net.Uri
@@ -8,7 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
-import com.example.firstapp.databinding.FragmentFirstBinding
+import com.bitmonky.passport.databinding.FragmentFirstBinding
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -40,7 +40,6 @@ class FirstFragment : Fragment() {
             startActivity(browserIntent)
         }
     }
-
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
