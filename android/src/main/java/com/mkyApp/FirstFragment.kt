@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
 import com.bitmonky.passport.databinding.FragmentFirstBinding
 
+
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
@@ -33,7 +34,8 @@ class FirstFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://localhost:8080"))
+        val browserIntent = Intent(Intent.ACTION_VIEW,
+            Uri.parse("http://localhost:14386"))
 
         binding.buttonFirst.setOnClickListener {
             //findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)

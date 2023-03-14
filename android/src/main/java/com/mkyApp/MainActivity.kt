@@ -37,6 +37,9 @@ import MkyECC
 import MkyWallet
 import MkyClientReq
 import android.graphics.Color
+private var mkw    = MkyWallet()
+private const val SPORT  = 14386
+private val pStr = mkw.setPort(SPORT)
 
 class MainActivity : AppCompatActivity() {
 
@@ -44,11 +47,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     private val mkyECC = MkyECC()
-    private var mkw    = MkyWallet()
+
     private var cReq   = MkyClientReq()
 
     private val fileName  = "bmgpWallet.txt"
-    private val indexJS   = "https://www.bitmonky.com/bitMDis/pWalletJSM.php"
+    private val indexJS   = "https://www.bitmonky.com/bitMDis/pWalletJSM.php?sport=$pStr"
     private val indexCSS  = "https://www.bitmonky.com/whzon/mblp/phone.css?v=1.0"
     private val indexICON = "https://image0.bitmonky.com/img/bitGoldCoin.png"
 
@@ -81,7 +84,7 @@ class MainActivity : AppCompatActivity() {
         Start Local http service for Wallet
         */
         try {
-            var server =  embeddedServer(Netty, port = 8080,host = "127.0.0.1") {
+            var server =  embeddedServer(Netty, port = SPORT,host = "127.0.0.1") {
                 routing {
                     get("/") {
                         call.respondText(getIndexPgHTML(), io.ktor.http.ContentType.Text.Html)
@@ -99,7 +102,6 @@ class MainActivity : AppCompatActivity() {
                 server.start(wait = false)
             }
 
-            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://localhost:8080"))
             binding.fab.setOnClickListener {
                 sayShit("Passport: " + mkw.ownMUID)
             }
