@@ -14,6 +14,15 @@ const port    = 80;
 const wfile   = 'keys/myBMGPWallet.key';
 const wconf   = 'keys/wallet.conf';
 
+function urldecode(msg){
+  msg = msg.replace(/\+/g,' ');
+  msg = decodeURI(msg);
+  msg = msg.replace(/%3A/g,':');
+  msg = msg.replace(/%2C/g,',');
+  msg = msg.replace(/%2F/g,'/');  
+  msg = msg.replace(/\\%2F/g,'/');
+  return msg;
+}
 class bitMonkyWSrv {
   constructor(){
     this.wallet = new bitMonkyWallet();
@@ -37,11 +46,7 @@ class bitMonkyWSrv {
         if (req.url.indexOf('/netREQ/msg=') == 0){
           res.writeHead(200);
           var msg = req.url.replace('/netREQ/msg=','');
-          msg = msg.replace(/\+/g,' ');
-          msg = decodeURI(msg);
-          msg = msg.replace(/%3A/g,':');
-          msg = msg.replace(/%2C/g,',');
-          msg = msg.replace(/\\%2F/g,'/');
+          msg = urldecode(msg);
           this.handleRequest(msg,res);
         }
         else {
@@ -63,6 +68,7 @@ class bitMonkyWSrv {
           }	
         }
         else { 
+          res.setHeader("Set-Cookie", "SameSite=None; Secure");
           res.setHeader("Content-Type", "text/html");
           res.writeHead(200);
           fs.createReadStream('html/index.html').pipe(res);
@@ -219,16 +225,16 @@ class bitMonkyWallet{
       const data = JSON.stringify(msg);
 
       const options = {
-        hostname : service.host,
-        port     : service.port,
-        path     : service.endPoint,
+        hostname : urldecode(service.host),
+        port     : urldecode(service.port),
+        path     : urldecode(service.endPoint),
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': data.length
         } 
       }
-
+      console.log('Service Options:->',options);
       const req = https.request(options, res => {
         var body = '';
 
