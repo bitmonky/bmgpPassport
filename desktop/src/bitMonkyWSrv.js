@@ -93,6 +93,10 @@ class bitMonkyWSrv {
        j = JSON.parse(msg);
        console.log(j);
        if (j.req){
+         if (j.req == 'useNewWallet'){
+           this.wallet.changeWallet(j,res);
+           return;
+         }
          this.wallet.doMakeReq(j.req,res,j.parms,j.service);
          return;
        } 
@@ -144,6 +148,24 @@ class bitMonkyWallet{
       const sig = this.signingKey.sign(calculateHash(token), 'base64');
       const hexSig = sig.toDER('hex');
       return hexSig;
+   }
+   changeWallet(j,res){
+     console.log('changeWallet',j.wallet.ownMUID); 
+     if (j.wallet.ownMUID == 'useDefault'){
+        this.openWallet();
+        j.result = true;
+        console.log('result',JSON.stringify(j));
+        res.end(JSON.stringify(j));
+        return;
+      }
+      
+      this.publicKey     = j.wallet.publicKey;
+      this.privateKey    = j.wallet.privateKey;
+      this.ownMUID       = j.wallet.ownMUID;
+      this.walletCipher  = j.wallet.walletCipher;
+      this.signingKey    = ec.keyFromPrivate(this.privateKey);
+      j.result = true;
+      res.end(JSON.stringify(j));
    }
    openWallet(){
       var keypair = null;
