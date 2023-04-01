@@ -14,6 +14,55 @@ const port    = 80;
 const wfile   = 'keys/myBMGPWallet.key';
 const wconf   = 'keys/wallet.conf';
 
+const { generateKeyPairSync } = require('crypto')
+
+class mkyRSAMail {
+  constructor(pPhrase,keys=null){
+    this.passPhrase = pPhrase;
+    if (keys){
+      this.publicKey = keys.publicKey;
+      this.privateKey = keys.privateKey;
+    }
+  } 
+  encryptString(toEncrypt) {
+    var buffer = Buffer.from(toEncrypt);
+    var encrypted = crypto.publicEncrypt(this.publicKey, buffer);
+    return encrypted.toString("base64");
+  };
+
+  decryptString(toDecrypt) {
+    var buffer = Buffer.from(toDecrypt, "base64");
+    const decrypted = crypto.privateDecrypt(
+      {
+        key: this.privateKey, 
+        passphrase: this.passPhrase,
+      },
+      buffer,
+    )
+    return decrypted.toString("utf8");
+  };
+  generateKeys() {
+    const { publicKey, privateKey } = generateKeyPairSync('rsa', 
+    {
+      modulusLength: 4096,
+      namedCurve: 'secp256k1', 
+      publicKeyEncoding: {
+        type: 'spki',
+        format: 'pem'     
+      },     
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem',
+        cipher: 'aes-256-cbc',
+        passphrase: this.passPhrase
+      } 
+    });
+    this.publicKey  = publicKey;
+    this.privateKey = privateKey;
+    return { publicKey : publicKey, privateKey}
+  }
+};
+
 function urldecode(msg){
   msg = msg.replace(/\+/g,' ');
   msg = decodeURI(msg);
@@ -138,6 +187,7 @@ class bitMonkyWallet{
       this.publicKey   = null;
       this.privateKey  = null;
       this.signingKey  = null;
+      this.rsaKeys     = null;
       this.openWallet();
    }
    calculateHash(txt) {
@@ -180,6 +230,13 @@ class bitMonkyWallet{
           this.privateKey    = j.privateKey;
           this.ownMUID       = j.ownMUID;
           this.walletCipher  = j.walletCipher;
+          if (j.rsaKeys)
+            this.rsaKeys       = j.rsaKeys;
+          else {
+            const rsaMail = new mkyRSAMail(this.walletCipher);
+            this.rsaKeys = rsaMail.generateKeys();
+            this.writeWallet();
+          }  
           this.signingKey    = ec.keyFromPrivate(this.privateKey);
         }
         catch(err) {console.log('wallet file not valid', err);process.exit();
@@ -191,7 +248,7 @@ class bitMonkyWallet{
         this.privateKey = key.getPrivate('hex');
         console.log('Generate a new wallet key pair and convert them to hex-strings');
         var mkybc = bitcoin.payments.p2pkh({ pubkey: new Buffer.from(''+this.publicKey, 'hex') });
-        this.branchMUID = mkybc.address;
+        this.ownMUID = mkybc.address;
 
         const pmc = ec.genKeyPair();
         this.pmCipherKey  = pmc.getPublic('hex');
@@ -200,14 +257,17 @@ class bitMonkyWallet{
         mkybc = bitcoin.payments.p2pkh({ pubkey: new Buffer.from(''+this.pmCipherKey, 'hex') });
         this.shardCipher = mkybc.address;
 
-        var wallet = '{"ownMUID":"'+ this.branchMUID+'","publicKey":"' + this.publicKey + '","privateKey":"' + this.privateKey + '",';
-        wallet += '"walletCipher":"'+this.shardCipher+'"}';
-        console.log(wallet);
-        fs.writeFile(wfile, wallet, function (err) {
-          if (err) throw err;
-         //console.log('Wallet Created And Saved!');
-        });
+        const rsaMail = new mkyRSAMail(this.walletCipher);
+        this.rsaKeys = rsaMail.generateKeys();
+        this.writeWallet();
       }
+   }
+   writeWallet(){
+     var wallet = '{"ownMUID":"'+ this.ownMUID+'","publicKey":"' + this.publicKey + '","privateKey":"' + this.privateKey + '",';
+     wallet += '"walletCipher":"'+this.walletCipher+'","rsaKeys":'+JSON.stringify(this.rsaKeys)+'}';
+     console.log(wallet);
+
+     fs.writeFileSync(wfile, wallet);
    }
    signMsg(stok) {
      const sig = this.signingKey.sign(this.calculateHash(stok), 'base64');
