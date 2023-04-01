@@ -10,6 +10,7 @@ const EC      = require('elliptic').ec;
 const ec      = new EC('secp256k1');
 const bitcoin = require('bitcoinjs-lib');
 const crypto  = require('crypto');
+const ALGO    = "aes-256-cbc"
 const port    = 80;
 const wfile   = 'keys/myBMGPWallet.key';
 const wconf   = 'keys/wallet.conf';
@@ -24,9 +25,10 @@ class mkyRSAMail {
       this.privateKey = keys.privateKey;
     }
   } 
-  encryptString(toEncrypt) {
+  encryptString(toEncrypt,toPubKey=null) {
+    if (!toPubKey) toPubKey =  this.publicKey;
     var buffer = Buffer.from(toEncrypt);
-    var encrypted = crypto.publicEncrypt(this.publicKey, buffer);
+    var encrypted = crypto.publicEncrypt(toPubKey, buffer);
     return encrypted.toString("base64");
   };
 
@@ -145,6 +147,15 @@ class bitMonkyWSrv {
          if (j.req == 'useNewWallet'){
            this.wallet.changeWallet(j,res);
            return;
+         }
+         if (j.req  == 'getRsaPubKey'){
+            j.rsaPubKey = this.wallet.rsaKeys
+            res.end(JSON.stringify(j));
+            return;
+         }
+         if (j.req  == 'rsaDecodeMsg'){
+            this.Wallet.doRsaDecodeMsg(j,res);
+            return;
          }
          this.wallet.doMakeReq(j.req,res,j.parms,j.service);
          return;
@@ -268,6 +279,38 @@ class bitMonkyWallet{
      console.log(wallet);
 
      fs.writeFileSync(wfile, wallet);
+   }
+   getRsaMailObj(){
+     if (!this.rsaMail){
+       this.rsaMail = rsaMail = new mkyRSAMail(this.walletCipher,this.rsaKeys);
+     }
+   }
+   doRsaDecodeMsg(j,res){
+     this.getRsaMailObj();
+     msgTok = this.rsaMail.decryptString(j.parms.msg.rsaToken);
+     msgIV  = this.rsaMail.decryptString(j.parms.msg.rsaIV);
+     j.msgClear = deCypher(j.parms.msg.body,msgTok);
+     res.end(JSON.stringify(j));
+   }
+   doRsaEncodeMsg(j,res){
+     this.getRsaMailObj();
+     const randTok = crypto.randomBytes(32).toString('base64');
+     const ranIV   = crypto.randomBytes(16).toString('base64');
+     j.msgEncoded  = enCrypt(j.parms.msg.body,randToken);
+     j.msgRsaToken = this.rsaMail.encryptString(randTok,j.parms.msg.toPubKey);
+     j.msgRsaIV    = this.rsaMail.encryptString(randIV,j.parms.msg.toPubKey);
+     res.end(JSON.stringify(j));
+   }
+   enCrypt(msg,msgToken,msgIV){
+     let cipher = crypto.createCipheriv(ALGO, msgToken, msgIV);
+     let encrypted = cipher.update(msg, 'utf8', 'base64');
+     encrypted += cipher.final('base64');
+     return encrypted;
+   }
+   deCypher(msg,msgKey,msgIV){
+     let decipher = crypto.createDecipheriv(ALGO, msgKey, msgIv);
+     let decrypted = decipher.update(text, 'base64', 'utf8');
+     return (decrypted + decipher.final('utf8'));
    }
    signMsg(stok) {
      const sig = this.signingKey.sign(this.calculateHash(stok), 'base64');
