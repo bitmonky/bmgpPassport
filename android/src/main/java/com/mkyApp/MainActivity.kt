@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
     private var cReq   = MkyClientReq()
 
     private val fileName  = "bmgpWallet.txt"
-    private val indexJS   = "https://www.bitmonky.com/bitMDis/pWalletJSM.php?sport=$pStr"
+    private val indexJS   = "https://www.bitmonky.com/bitMDis/pWalletJSM.php?dbug=on&sport=$pStr"
     private val indexCSS  = "https://www.bitmonky.com/whzon/mblp/phone.css?v=1.0"
     private val indexICON = "https://image0.bitmonky.com/img/bitGoldCoin.png"
 
@@ -136,8 +136,19 @@ class MainActivity : AppCompatActivity() {
         val currentTime: String = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         return currentDate + currentTime
     }
+    private fun changeWallet():String{
+        if (cReq.ownMUID == "useDefault"){
+            this.doOpenWallet();
+            cReq.ownMUID = mkw.ownMUID
+            return cReq.toJSON(true)
+        }
+        mkw.publicKey     = cReq.publicKey
+        mkw.privateKey    = cReq.privateKey
+        mkw.ownMUID       = cReq.ownMUID
+        mkw.walletCipher  = cReq.walletCipher
+        return cReq.toJSON(true)
+    }
     private fun doOpenWallet(){
-
         try {
             var fWal: File = getFileStreamPath(fileName) //File(getExternalStorageDirectory() ,fileName)
 
@@ -195,8 +206,12 @@ class MainActivity : AppCompatActivity() {
         j = j.replace("%2F","/")
 
         cReq.doParse(j)
+        sayShit(cReq.service)
         if (cReq.req == "sendPassportBCK"){
            return doSendPassportBCK();
+        }
+        if (cReq.req == "useNewWallet") {
+           return changeWallet()
         }
         return  doMakeReq()
     }
