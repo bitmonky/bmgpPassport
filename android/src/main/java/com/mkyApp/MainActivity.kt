@@ -208,10 +208,20 @@ class MainActivity : AppCompatActivity() {
         cReq.doParse(j)
         sayShit(cReq.service)
         if (cReq.req == "sendPassportBCK"){
+           if (cReq.isRootService == false){
+               return "Request For Wallet File Denied..."
+           }
            return doSendPassportBCK();
         }
         if (cReq.req == "useNewWallet") {
            return changeWallet()
+        }
+        if (cReq.req  == "getRsaPubKey"){
+           return mkw.rsaPubKey;
+        }
+        if (cReq.req  == "rsaDecodeMsg"){
+            mkyECC.rsa.setKeysTo(mkw.rsaPubKey,mkw.rsaPrivKey)
+            return mkyECC.rsa.doDecode(cReq.parms);
         }
         return  doMakeReq()
     }
