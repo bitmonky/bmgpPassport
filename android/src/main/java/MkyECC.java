@@ -8,6 +8,8 @@ import org.bitcoinj.params.MainNetParams;
 import java.io.UnsupportedEncodingException;
 import java.security.*;
 import javax.crypto.Cipher;
+import javax.crypto.*;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -15,7 +17,9 @@ import android.util.Base64; //java.util.Base64;
 import java.math.BigInteger;
 import java.security.spec.AlgorithmParameterSpec;
 
+
 public class MkyECC {
+    String ALGO = "aes-256-cbc";
     KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
     KeyPair pair = generator.generateKeyPair();
     class MkyRSA  {
@@ -27,6 +31,19 @@ public class MkyECC {
             return "\"rsaKeys\": { " +
               "\"pubKey\":\"" + pubKey +
               "\",\"privKey\":\"" + privKey + "\"}";
+        }
+        public void generateNewKey() throws NoSuchAlgorithmException, NoSuchPaddingException {
+            KeyGenerator keygen = KeyGenerator.getInstance("AES");
+            keygen.init(128);
+            byte[] key = keygen.generateKey().getEncoded();
+            esaKey = android.util.Base64.encodeToString(key,android.util.Base64.DEFAULT);
+
+            SecureRandom random = null;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                random = SecureRandom.getInstanceStrong();
+            }
+            byte[] iv = new byte[Cipher.getInstance(ALGO).getBlockSize()];
+            esaIV = android.util.Base64.encodeToString(iv,android.util.Base64.DEFAULT);
         }
         public String encrypt(String src,String key,String iv) {
             esaKey = key;
