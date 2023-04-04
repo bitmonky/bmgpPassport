@@ -14,6 +14,9 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import android.util.Base64; //java.util.Base64;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.math.BigInteger;
 import java.security.spec.AlgorithmParameterSpec;
 
@@ -22,15 +25,23 @@ public class MkyECC {
     String ALGO = "aes-256-cbc";
     KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
     KeyPair pair = generator.generateKeyPair();
-    class MkyRSA  {
+    public class MkyRSA  {
         String pubKey = "";
         String privKey = "";
         String esaKey = "";
         String esaIV  = "";
+        String msgBody = "";
+        public void setKeysTo(String pKey ,String pvKey){
+            pubKey  = pKey;
+            privKey = pvKey;
+        }
         public String  toJSON(){
             return "\"rsaKeys\": { " +
               "\"pubKey\":\"" + pubKey +
               "\",\"privKey\":\"" + privKey + "\"}";
+        }
+        public String getRsaPublicKey(){
+            return pubKey;
         }
         public void generateNewKey() throws NoSuchAlgorithmException, NoSuchPaddingException {
             KeyGenerator keygen = KeyGenerator.getInstance("AES");
@@ -45,6 +56,20 @@ public class MkyECC {
             byte[] iv = new byte[Cipher.getInstance(ALGO).getBlockSize()];
             esaIV = android.util.Base64.encodeToString(iv,android.util.Base64.DEFAULT);
         }
+        public String doDecode(String encodedMsg) throws JSONException {
+            JSONObject obj = new JSONObject(encodedMsg);
+            try {
+                esaKey = obj.getJSONObject("msg").getString("esaKey");
+                esaIV = obj.getJSONObject("msg").getString("esaIV");
+                msgBody = obj.getJSONObject("msg").getString("body");
+                decryptEsaKeys();
+                return decrypt(msgBody);
+            }
+            catch (Exception e) {
+                return e.toString();
+            }
+        }
+        public void decryptEsaKeys(){}
         public String encrypt(String src,String key,String iv) {
             esaKey = key;
             esaIV  = iv;
@@ -87,9 +112,9 @@ public class MkyECC {
         }
 
     }
+    public MkyRSA rsa = new MkyRSA();
     public MkyECC() throws NoSuchAlgorithmException {
     }
-
     public String signToken(String tok,String inPrivKey,String inPubKey) {
         BigInteger privKey = new BigInteger(inPrivKey, 16);
         ECKey signingKey = ECKey.fromPrivate(privKey);
