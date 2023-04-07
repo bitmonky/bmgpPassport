@@ -10,14 +10,15 @@ Android version available in google play store..  search for BitMonky
 # How to create a password free service for you website using BitMonky Passport
 
 1. Define an endpoint for your service API like this.
+```javascript
      Service {
          host : ‘www.yourdomain.com’,
          port :  ‘’,   // leave blank for default SSL port 
          endPoint , ‘/yourAPI.php’   //  PHP for this example 
      }  
-
+```
 2. Create a relational table like this example.
-
+```
 CREATE TABLE `tblwzMUID` (
   `muidID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `muidWzUserID` bigint(20) ,           //relate this to your systems user accounts file
@@ -30,7 +31,7 @@ CREATE TABLE `tblwzMUID` (
   UNIQUE KEY `muidMUID_UNIQUE` (`muidMUID`),
   KEY `ndxMuidWzUserID` (`muidWzUserID`),
 )
-
+```
 3.  Install the NodeJS BitMonky Passport Authorization Server from github
      https://github.com/bitmonky/passportAuthSrv
  
@@ -38,7 +39,7 @@ CREATE TABLE `tblwzMUID` (
      https://yourdomain.com/mbrLogin?muidID=String84&Token=String64
 
 Instead of validating your userID/Login with your password and user file validate the login using your SQL table tblwzMUID something like this.
-
+``` PHP
 $sessExpireTime = 100  // replace with your systems session expire time;
 
 $loginMUID   = safeGET('muidID');
@@ -60,10 +61,10 @@ if ($loginMUID){
   }
 }
 // Log the user access as if they had provide an authentic userID / Password
-
+```
    
 6.  Create your Service API similar to this PHP example
-
+``` PHP
 $j   = file_get_contents('php://input');
 $inJ = $j;
 $j   = json_decode($j);
@@ -190,7 +191,7 @@ function tryJFetchURL($j,$method='GET',$timeout=5){
     curl_close($crl);
     return $resp;
 }
-
+```
 
 That is all there is to do.  Once your service is ready download the BitMonky PassPort App and create an account.  Once you have your account click on the Services button and click the ‘Register My Service’ link.
 
