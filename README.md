@@ -35,10 +35,10 @@ CREATE TABLE `tblwzMUID` (
 3.  Install the NodeJS BitMonky Passport Authorization Server from github
      https://github.com/bitmonky/passportAuthSrv
  
-4. Create or alter your current login script to input these two fields.
+4. Create or alter your current login script to input these two fields
      https://yourdomain.com/mbrLogin?muidID=String84&Token=String64
 
-Instead of validating your userID/Login with your password and user file validate the login using your SQL table tblwzMUID something like this.
+5. Instead of validating your userID/Login with your password and user file validate the login using your SQL table tblwzMUID something like this.
 ``` PHP
 $sessExpireTime = 100  // replace with your systems session expire time;
 
