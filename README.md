@@ -61,7 +61,7 @@ if ($loginMUID){
     }
   }
 }
-// Login the user access as if they had provide an authentic userID / Password
+// Login the user the same way as if they had provide an authentic userID / Password
 ```
    
 6.  Create your Service API similar to this PHP example
