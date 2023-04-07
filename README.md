@@ -194,7 +194,7 @@ function tryJFetchURL($j,$method='GET',$timeout=5){
 }
 ```
 
-That is all there is to do.  Once your service is ready download the BitMonky Passport App and create an account.  Once you have your account click on the Services button and click the ‘Register My Service’ link.
+That is all there is to do.  Once your service is ready download the BitMonky Passport App and create an account.  Using your new account click on the Services button and click the ‘Register My Service’ link.
 
 You will need a 500x500 pixel Icon image and a 1200x400 banner image loaded on your sites web server to complete the registration process.
 
