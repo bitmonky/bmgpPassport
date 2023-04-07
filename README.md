@@ -13,8 +13,8 @@ Android version available in google play store..  search for BitMonky
 ```javascript
      Service {
          host : ‘www.yourdomain.com’,
-         port :  ‘’,   // leave blank for default SSL port 
-         endPoint , ‘/yourAPI.php’   //  PHP for this example 
+         port :  ‘’,                 // leave blank for default SSL port 
+         endPoint : ‘/yourAPI.php’   //  PHP for this example 
      }  
 ```
 2. Create a relational table like this example.
