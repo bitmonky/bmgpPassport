@@ -36,8 +36,9 @@ CREATE TABLE `tblwzMUID` (
      https://github.com/bitmonky/passportAuthSrv
  
 4. Create or alter your current login script to input these two fields
-     https://yourdomain.com/mbrLogin?muidID=String84&Token=String64
-
+     ```
+     https://yourdomain.com/mbrLogin?muidID=String84&pToken=String64
+     ```
 5. Instead of validating your userID/Login with your password and user file validate the login using your SQL table tblwzMUID something like this.
 ``` PHP
 $sessExpireTime = 100  // replace with your systems session expire time;
