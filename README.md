@@ -101,6 +101,7 @@ if ($rec){
       $j->action = $action;
       $j->result = true;
       $j->accToken = $newToken;
+      $j->login = "https://www.yourdomain.com/yourLoginScript.php?pToken=".$newToken."&pMUID=".$wAddress;  // link for users to login to your website/service.
       $j->msg = 'Access Granted:';
       exit(json_encode($j));
     }
