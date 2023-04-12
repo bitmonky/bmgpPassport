@@ -43,6 +43,12 @@ function getSendGoldToMbr(muid){
    }
    sendRequest(msg);
 }
+function doCloseWalletOpt(){
+  doSendTrendingReq();
+}
+function cancelSendGold(){
+  doSendTrendingReq();
+}
 function doSendGoldNow(){
   var bmgp = document.getElementById('sendBMGPAmt').value;
   var mnic = document.getElementById('sendToNic').value;
@@ -59,6 +65,53 @@ function doSendGoldNow(){
       }
     }
     sendRequest(msg); 
+  }
+}
+function doSendRegServiceFrm(){
+   var msg = {
+     req : "getRegServiceFrm",
+     parms : {
+       mode : "<?php echo $mode;?>",
+     }
+   }
+   sendRequest(msg);
+}
+function doSendRegServiceReq(){
+  var but   = document.getElementById('psrvRegBut');
+  but.disabled = true;
+  var host  = document.getElementById('psrvHost').value.trim();
+  var port  = document.getElementById('psrvPort').value.trim();
+  var point = document.getElementById('psrvEndPoint').value.trim();
+  var login = document.getElementById('psrvLogin').value.trim();
+  var title = document.getElementById('psrvTitle').value.trim();
+  var desc  = document.getElementById('psrvDesc').value.trim();
+  cport = port;
+  if (port != ''){
+    cport = ':'+port;
+  } 
+  if (point[0] !== '/'){
+    point = '/'+point;
+  }
+  var conf = confirm("Register Service https://"+host+cport+point+" Now?");
+  if (conf){
+    //alert('Sorry Service Not Available... Try Again Latter');
+    //return;
+    var msg = {
+      req : "doRegNewService",
+      parms : {
+        mode : "<?php echo $mode;?>",
+        host : host,
+	port : port,
+	endPoint : point,
+        login : login,
+        title : title,
+        desc : desc
+      }
+    }
+    sendRequest(msg);
+  }
+  else {
+    but.disabled = false;
   }
 }
 function doSendTrendingReq(){
@@ -86,6 +139,15 @@ function doSendUseWallet(w){
    var msg = {
      req : "useNewWallet",
      wallet : w,
+     parms : {
+       mode : "<?php echo $mode;?>"
+     }
+   }
+   sendRequest(msg);
+}
+function doSendServiceListReq(){
+   var msg = {
+     req : "sendServiceList",
      parms : {
        mode : "<?php echo $mode;?>"
      }
@@ -202,6 +264,18 @@ function doCreateAccount(){
    console.log(msg);
    sendRequest(msg);
 }
+function doServiceLogin(service){
+   console.log(service);
+   var useSrv;
+   try { useSrv = JSON.parse(service);}
+   catch(e) {console.log('JSON error',e);return}
+   var msg = {
+     req : "sendLoginToken",
+     service : useSrv
+   }
+   //butToFetching('loginBut');
+   sendRequest(msg);
+}
 function doLogin(){
    if (!hasAccount){
      alert('No Account Found... Please create an account or use the Link Account option');
@@ -261,8 +335,8 @@ function handleResponse(j){
     hideDiv('walletForm');
     doShowQryResults(j);
     var opt = {
-      title  : 'Select A Member To Send BMGP To',
-      promt  : 'Type Member Name',
+      title  : 'Send BMGP To',
+      promt  : 'Type Name',
       action : 'qryMemberSendTo'
     }
     createAutoSelect(opt);
@@ -279,6 +353,15 @@ function handleResponse(j){
   if (j.action == 'sendTrendingList'){
     doShowTrendingList(j);
   }
+  if (j.action == 'sendServiceList'){
+    doShowStoresList(j);
+  }
+  if (j.action == 'getRegServiceFrm'){
+    doShowStoresList(j);
+  }
+  if (j.action == 'doRegNewService'){
+    doHandleNewReg(j);
+  }
   if (j.action == 'sendStoresList'){
     doShowStoresList(j);
   }
@@ -289,9 +372,13 @@ function handleResponse(j){
   if (j.action == 'sendLoginToken'){
     pToken = j.accToken;
     pMUID  = j.pMUID;
-    var conf = confirm('Login to bitMonky Now?');
+    var conf = confirm('Login to Web Service Now?');
     if (conf){
-      const url = 'https://web.bitmonky.com/whzon/mbr/mbrLogin.php?pToken='+pToken+'&pMUID='+pMUID;
+      var url = 'https://web.bitmonky.com/whzon/mbr/mbrLogin.php?pToken='+pToken+'&pMUID='+pMUID;
+      if (j.login){
+        url = j.login;
+      }
+      console.log('try login',url);
       window.open(url,'bitMonky');
     }
     butRestoreTo('loginBut',' BitMonky Login ');
@@ -418,6 +505,30 @@ function doShowQryResults(j){
     document.body.appendChild(spot);
   }
 }
+function doHandleNewReg(j){
+  var spot = document.getElementById('serviceMenu');
+  console.log(j);
+  console.log(spot);
+  if (j.actionRes.result == false){
+    j.html = "<h2 style='color:darkKhaki;'>"+ j.actionRes.msg + "</h2>";
+    setTimeout('doSendRegServiceFrm()',3*1000);
+  } 
+  else {
+    doSendServiceListReq();
+    return;
+  }
+  if (spot){
+    console.log('Updating Service DIV');
+    spot.innerHTML = j.html;
+  }
+  else {
+    console.log('Inserting Service DIV');
+    spot = document.createElement('DIV');
+    spot.id = 'serviceMenu';
+    spot.innerHTML = j.html;
+    document.body.appendChild(spot);
+  }
+}
 function getAddressSpot(j){
   return "<div onmouseOver='showDiv(\"changeWLink\",\"inline\");' onmouseout='hideDiv(\"changeWLink\");'>Address: "+format(j.pMUID) +
     " <a ID='changeWLink' style='display:none;' href='javascript:showDiv(\"walletForm\");'>Change Wallet</a></div>" +
@@ -476,6 +587,7 @@ function getSearchHTML(){
     "<input style='width:60%;font-size:larger;' onkeypress='return noenter();' ID='peerMemQry' " +
     " placeholder=' PeerTree Search' type='text' name='search'/>" +
     " <input ID='peerMemBut' type='button'  value=' Search ' onclick='doSendPeerMemQry();'/> " +
+    " <input ID='openWalletBut' type='button'  value=' Open Wallet ' onclick='doSendWalletOptions();'/> " +
     "</form>" +
     "<div ID='Searching' style='display:none;'>" + 
     "<div style='padding:.5em;display:inline;height:28px;color:#777777;' ><div class='mkyloader'></div>Searching The PeerTree...</div>" +
@@ -483,7 +595,9 @@ function getSearchHTML(){
   return htm;
 }
 function sendRequest(msg){
-    msg.service = service;
+    if (!msg.service){
+      msg.service = service;
+    }
     console.log('Sending:->',msg);
     msg = JSON.stringify(msg);
     console.log(msg);
@@ -593,8 +707,7 @@ function createAutoSelect(opt){
      console.log('qryAction',qryAction);
      spot.innerHTML = '<h2><span style="padding:6px;background:#111111;border-radius: .5em;">'+opt.title+'</h2>' +
        '<form ID="getLocation" name="wzLocationFrm" >' +
-       '<b>'+opt.promt+'</b> ' +
-       '<input type="text"  name="flocation" oninput="doClick(event,\''+opt.action+'\');">' +
+       '<input type="text"  style="font-size:larger;" name="flocation" placeholder="'+opt.promt+'" oninput="doClick(event,\''+opt.action+'\');">' +
        '<div ID="putQryResults"></div>';
    } 
 }
