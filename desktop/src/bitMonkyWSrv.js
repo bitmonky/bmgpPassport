@@ -143,9 +143,21 @@ class bitMonkyWSrv {
      try {
        j = JSON.parse(msg);
        console.log(j);
+       if (j.PIN != 'TEST_PIN_2x49fg16'){ //this.wallet.walletCipher){
+         j.req    = 'repPINFail';
+         j.result = true;
+         j.msg    = "PIN Error";
+         res.end(JSON.stringify(j));
+         return; 
+       }   
        if (j.req){
          if (j.req == 'useNewWallet'){
            this.wallet.changeWallet(j,res);
+           return;
+         }
+         if (j.req  == 'signToken'){
+           j.signedToken = this.wallet.signMsg(j.sigTokenData);
+           res.end(JSON.stringify(j));
            return;
          }
          if (j.req  == 'getRsaPubKey'){
@@ -160,14 +172,8 @@ class bitMonkyWSrv {
          this.wallet.doMakeReq(j.req,res,j.parms,j.service);
          return;
        } 
-       if (j.what == 'getNode'){
-         var report = this.sendReport();
-         res.end(report);
-       }
-       else { 
-         res.end("No Handler Found For:\n\n "+JSON.stringify(j));
-       } 
-    }
+       res.end("No Handler Found For:\n\n "+JSON.stringify(j));
+     }
      catch(err) {
        //console.log("json parse error:",err);
        res.end("JSON PARSE Errors: \n\n"+msg+"\n\n"+err);
@@ -332,19 +338,30 @@ class bitMonkyWallet{
 
    handleResponse(data,res){
      data.pMUID = this.ownMUID;
-     console.log(data);
-     if (res){
+     console.log('API-Response:\n\n',data);
+     if (data.callBack){
+       this.handleCallBack(data,res);
+     }
+     else if (res){
        res.end(JSON.stringify(data));
      }
+   }
+   handleCallBack(j,wres){
+      if(j.action == 'cbkSignToken'){
+        j.orig.parms.tokenSig = this.signMsg(j.token);
+        console.log('callback is now:',j.orig);
+        this.sendPostRequest(j.orig,wres);
+      }          
    }
    sendPostRequest(msg,wres=null,service=null){
       if (service === null){
         service = {
           endPoint : '/whzon/gold/netWalletAPI.php',
-          host     : 'www.bitmonky.com',
-          port     : this.port
+          host     : 'web.bitmonky.com',
+          port     : ''
         }
       }
+      console.log('ServiceInfo:/n/n',service);
       const https = require('https');
 
       const data = JSON.stringify(msg);
