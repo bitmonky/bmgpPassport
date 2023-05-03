@@ -2,7 +2,7 @@
 Wallet App and password free web service access
 
 Can be used to create password free web services for Android and desktop applications.
-[![Watch the video](https://i2.ytimg.com/vi/TB5CSj-kXcQ/hqdefault.jpg)](https://www.youtube.com/watch?v=TB5CSj-kXcQ)
+[![Watch the video](https://i2.ytimg.com/vi/TB5CSj-kXcQ/maxresdefault.jpg)](https://www.youtube.com/watch?v=TB5CSj-kXcQ)
 
 Android version available in google play store..  search for BitMonky
 
