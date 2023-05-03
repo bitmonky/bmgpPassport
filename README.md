@@ -2,8 +2,8 @@
 Wallet App and password free web service access
 
 Can be used to create password free web services for Android and desktop applications.
+[![Watch the video](https://i.imgur.com/TB5CSj-kXcQ.png)](https://www.youtube.com/watch?v=TB5CSj-kXcQ)
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/TB5CSj-kXcQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
 ![main](images/twitPass.png)
 
