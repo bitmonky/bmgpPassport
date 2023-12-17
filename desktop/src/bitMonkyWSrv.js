@@ -272,7 +272,7 @@ class bitMonkyWallet{
 
         console.log('Generate a new wallet cipher key');
         mkybc = bitcoin.payments.p2pkh({ pubkey: new Buffer.from(''+this.pmCipherKey, 'hex') });
-        this.shardCipher = mkybc.address;
+        this.walletCipher = mkybc.address;
 
         const rsaMail = new mkyRSAMail(this.walletCipher);
         this.rsaKeys = rsaMail.generateKeys();
