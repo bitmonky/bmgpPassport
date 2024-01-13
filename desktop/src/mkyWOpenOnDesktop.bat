@@ -1,3 +1,3 @@
 echo "Opening Wallet"
-start "" "C:\Users\peter\Desktop\BitMonky.url"
+start "" "C:\bitMonky\BitMonky.url"
 exit
