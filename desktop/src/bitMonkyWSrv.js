@@ -6,6 +6,8 @@ BitMonky Wallet Server
 const webCon  = require('http');
 const fs      = require('fs');
 const url     = require('url');
+const multer  = require('multer');
+const path    = require('path');
 const EC      = require('elliptic').ec;
 const ec      = new EC('secp256k1');
 const bitcoin = require('bitcoinjs-lib');
@@ -16,7 +18,103 @@ const wfile   = 'keys/myBMGPWallet.key';
 const wconf   = 'keys/wallet.conf';
 
 const { generateKeyPairSync } = require('crypto')
+const upload = multer({dest:'uploads/'});
+const sanitize = require('sanitize-filename');
 
+const baseDir = path.join(__dirname, 'uploads');
+const allowedExtensions = ['.jpg', '.png', '.txt'];
+
+function sanitizeFilename(filename) {
+  const safeFilename = sanitize(filename);
+
+  /* Validate the file extension
+  const ext = path.extname(safeFilename).toLowerCase();
+  if (!allowedExtensions.includes(ext)) {
+    throw new Error('Invalid file extension');
+  }*/
+  return safeFilename;
+}
+
+function isSafePath(userPath) {
+  const safePath = path.normalize(userPath);
+
+  // Restrict to the base directory
+  const resolvedPath = path.resolve(baseDir, safePath);
+  if (!resolvedPath.startsWith(baseDir)) {
+    console.log('Unauthorized file path');
+    return false;
+  }
+
+  return resolvedPath;
+}
+const https = require('https');
+
+class BorgPortal {
+  constructor() {
+    this.pfile = 'keys/borgPortalsList.dat';
+    this.portals = [];
+    this.loadPortals();
+  }
+
+  loadPortals() {
+    try {
+      const data = fs.readFileSync(this.pfile, 'utf8');
+      this.portals = JSON.parse(data);
+    } catch (error) {
+      console.log("borgPortalsList Update.. file doesn't exist. Initializing empty portals list.");
+      this.portals = [];
+    }
+  }
+  testConnect(url) {
+     url = `https://${url}`;
+     console.log('trying url',url);
+     return new Promise((resolve) => {
+      const options = {
+        method: 'HEAD',
+        agent: new https.Agent({ rejectUnauthorized: false }) 
+      };
+
+      const req = https.request(url, options, (res) => {
+        resolve(res.statusCode === 200);
+      });
+
+      req.on('error', () => resolve(false));
+      req.end();
+    });
+  }
+
+  async selectPortal(netName) {
+    const index = this.portals.findIndex(portal => portal.netName === netName);
+    console.log('INDEX',index,netName);
+    if (index === -1) {
+      return 'web.bitmonky.com';
+    }     
+
+    let activeNodes = [...this.portals[index].activeNodes]; // Copy active nodes
+
+    while (activeNodes.length > 0) {
+      // Randomly select an index
+      const rnodeIndex = Math.floor(Math.random() * activeNodes.length);
+      let result = `${activeNodes[rnodeIndex].ip}`;
+
+      if (this.portals[index].recpPort) {
+        result += `:${this.portals[index].recpPort}`;
+      }
+
+      const isConnected = await this.testConnect(result);
+      if (isConnected) {
+        console.log(`Successful HTTPS connection: ${result}`);
+        return result;
+      }
+
+      console.log(`Failed HTTPS check: ${result}, removing and retrying...`);
+      activeNodes.splice(rnodeIndex, 1); 
+    }
+
+    console.log("No available portals responded successfully.");
+    return 'web.bitmonky.com';
+  }
+}
 class mkyRSAMail {
   constructor(pPhrase,keys=null){
     this.passPhrase = pPhrase;
@@ -74,57 +172,123 @@ function urldecode(msg){
   msg = msg.replace(/\\%2F/g,'/');
   return msg;
 }
+
 class bitMonkyWSrv {
   constructor(){
     this.wallet = new bitMonkyWallet();
-    console.log(this.wallet);
+    this.init();
+  }
+  async init() {
+    //console.log(this.wallet);
     this.allow = ["127.0.0.1"];
     this.recPort = 1385;
     this.readConfigFile();
+    this.portal = new BorgPortal();
+    this.webPortal = await this.portal.selectPortal('borgApacheCell');
+    console.log('USINGING WEB PORTAL',this.webPortal);
+   
     this.srv = webCon.createServer( async (req, res) => {
      var pathname = url.parse(req.url).pathname;
+     console.log(pathname);
      if (req.method === 'GET' && pathname === '/favicon.ico') {
        res.setHeader('Content-Type', 'image/x-icon');
        fs.createReadStream('favicon.ico').pipe(res);
        return;
      }
      
-     if (req.url == '/keyGEN'){
-        res.writeHead(200);
-        res.end('KeyGEN not available on netCon');
-      }
-      else {
-        if (req.url.indexOf('/netREQ/msg=') == 0){
+     if (req.method === 'POST' && pathname === '/storeRepoFileOnTree.php') {
+       console.log('Got repoUploadFile.php req!');
+       upload.single('photo')(req, res, (err) => {
+         if (err) {
+           res.writeHead(500, { 'Content-Type': 'application/json' });
+           res.end(JSON.stringify({ result: false, data: 'File Upload Failed' }));
+           return;
+         }
+
+         const { originalname, mimetype, path: tmpname, size, error } = req.file;
+         console.log(req.file);
+         if (size > 0 && size < 200000000 && !error) {
+           const contents = fs.readFileSync(tmpname);
+           const hash = crypto.createHash('sha256').update(contents).digest('hex');
+           const fholder = `${hash}.tmp`;
+           const targetDir = 'uploads/';
+           const targetFile = path.join(targetDir, fholder);
+
+           fs.rename(tmpname, targetFile, (err) => {
+             if (err) {
+               res.writeHead(500, { 'Content-Type': 'application/json' });
+               res.end(JSON.stringify({ result: false, data: 'File Move Failed' }));
+             } else {
+               //res.writeHead(200, { 'Content-Type': 'application/json' });
+               //res.end(JSON.stringify({ result: false, data: 'File Upload Failed' })); 
+	       //return; 
+               const j = {
+                 req : 'uploadUserFile',
+                 fileName : originalname,
+                 filePath : targetFile,
+                 mimeType : mimetype, 
+                 remoteUrl : `${this.webPortal}/whzon/bitMiner/storeRepoFileOnTree.php`
+               }
+               this.wallet.doUploadFile(j, res);
+             } 
+           });
+         }
+	 else {
+           res.writeHead(400, { 'Content-Type': 'application/json' });
+           res.end(JSON.stringify({ result: false, data: 'Invalid File' }));
+         }
+       });
+     }
+     else {
+       if (req.url.indexOf('/netREQ/msg=') == 0){
           res.writeHead(200);
           var msg = req.url.replace('/netREQ/msg=','');
           msg = urldecode(msg);
           this.handleRequest(msg,res);
         }
         else {
-        if (req.url.indexOf('/netREQ') == 0){
-  	    if (req.method == 'POST') {
-            var body = '';
-            req.on('data', (data)=>{
-              body += data;
-              // Too much POST data, kill the connection!
-              //console.log('body.length',body.length);
-              if (body.length > 300000000){
-                console.log('max datazize exceeded');
-                req.connection.destroy();
-              }
+          if (req.url.indexOf('/netREQ') == 0){
+            if (req.method == 'POST') {
+              var body = '';
+              req.on('data', (data)=>{
+                body += data;
+                // Too much POST data, kill the connection!
+                //console.log('body.length',body.length);
+                if (body.length > 300000000){
+                  console.log('max datazize exceeded');
+                  req.connection.destroy();
+                }
+              });
+              req.on('end', ()=>{
+                handleRequest(body,res);
+              });
+            }	
+          }
+          else { 
+            res.setHeader("Set-Cookie", "SameSite=None; Secure");
+            res.setHeader("Content-Type", "text/html");
+            res.writeHead(200);
+            const indexFile = 'html/index.html';
+            const readStream = fs.createReadStream(indexFile, 'utf8');
+
+            let fileContent = '';
+
+            readStream.on('data', (chunk) => {
+              fileContent += chunk;
             });
-            req.on('end', ()=>{
-              handleRequest(body,res);
+
+            readStream.on('end', () => {
+              fileContent = fileContent.replace(/<BORG_PORTAL>/g, this.webPortal); 
+              res.end(fileContent);
             });
-          }	
+
+            readStream.on('error', (err) => {
+              console.error("Error reading file:", err);
+              res.end("Error loading index file."+indexFile);
+            });
+            return;
+          }
         }
-        else { 
-          res.setHeader("Set-Cookie", "SameSite=None; Secure");
-          res.setHeader("Content-Type", "text/html");
-          res.writeHead(200);
-          fs.createReadStream('html/index.html').pipe(res);
-          return;
-        }}
       }
     });
     this.srv.on('connection', (sock)=> {
@@ -155,6 +319,10 @@ class bitMonkyWSrv {
            this.wallet.changeWallet(j,res);
            return;
          }
+         //if (j.req == 'uploadUserFile'){
+         //  this.wallet.doUploadFile(j, res);
+         //  return;
+         //}
          if (j.req  == 'signToken'){
            j.signedToken = this.wallet.signMsg(j.sigTokenData);
            res.end(JSON.stringify(j));
@@ -279,7 +447,70 @@ class bitMonkyWallet{
         this.writeWallet();
       }
    }
-   writeWallet(){
+   doUploadFile(j, res) {
+     console.log('doUploadFile::',j);
+     const https = require('https');
+     const FormData = require('form-data');
+     //const mime = require('mime-types');
+
+     const filePath = j.filePath;  
+     const remoteUrl = j.targetURL;
+
+     const form = new FormData();
+     form.append('photo', fs.createReadStream(filePath), {
+        filename: j.fileName, 
+        contentType: j.mimeType
+     });
+
+     const options = {
+        hostname : 'www.bitmonky.com',
+        port     : 443,
+        path     : '/whzon/bitMiner/storeRepoFileOnTree.php',
+        method: 'POST',
+        headers: form.getHeaders(),
+     };
+
+     const req = https.request(options, serverRes => {
+        console.log(options);
+        let responseData = '';
+
+        serverRes.on('data', (chunk) => {
+            responseData += chunk;
+        });
+
+        serverRes.on('end', () => {
+            try {
+                console.log('ResponseData is::',responseData);
+                const response = JSON.parse(responseData);
+                if (response.result) {
+                    console.log('Upload successful:', response);
+                    j.result = true;
+                    j.msg = 'File uploaded successfully.';
+                    j.response = response;
+                } else {
+                    console.log('Upload failed:', response);
+                    j.result = false;
+                    j.msg = `Error on file upload: ${response.message}`;
+                }
+            } catch (error) {
+                console.log('Failed to parse server response:',responseData, error);
+                j.result = false;
+                j.msg = `Error on file upload: ${responseData}`;
+            }
+            res.end(JSON.stringify(j));
+        });
+    });
+
+    req.on('error', (error) => {
+        console.log('Request error:', error);
+        j.result = false;
+        j.data = `Error on file upload: ${error.message}`;
+        res.end(JSON.stringify(j));
+    });
+
+    form.pipe(req);
+  }
+  writeWallet(){
      var wallet = '{"ownMUID":"'+ this.ownMUID+'","publicKey":"' + this.publicKey + '","privateKey":"' + this.privateKey + '",';
      wallet += '"walletCipher":"'+this.walletCipher+'","rsaKeys":'+JSON.stringify(this.rsaKeys)+'}';
      console.log(wallet);
@@ -353,7 +584,18 @@ class bitMonkyWallet{
         this.sendPostRequest(j.orig,wres);
       }          
    }
-   sendPostRequest(msg,wres=null,service=null){
+   sendPostRequest(msg,wres=null,service=null,redirectCount=0){
+      const MAX_REDIRECTS = 5; // Limit the number of redirects
+
+      if (redirectCount > 0 ) {
+        console.log('REDIRECT::',redirectCount,service);
+      }
+      if (redirectCount > MAX_REDIRECTS) {
+        console.log("Maximum redirects reached. Aborting request.");
+        return;
+      }
+
+
       if (service === null){
         service = {
           endPoint : '/whzon/gold/netWalletAPI.php',
@@ -365,18 +607,21 @@ class bitMonkyWallet{
       const https = require('https');
 
       const data = JSON.stringify(msg);
+      const agent = new https.Agent({
+        rejectUnauthorized: false 
+      });
 
       const options = {
         hostname : urldecode(service.host),
         port     : urldecode(service.port),
         path     : urldecode(service.endPoint),
-        method: 'POST',
+        method   :'POST',
+        agent    : agent,
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': data.length
         } 
       }
-      console.log('Service Options:->',options);
       const req = https.request(options, res => {
         var body = '';
 
@@ -385,7 +630,23 @@ class bitMonkyWallet{
         });
 
         res.on('end',()=>{
-          if (res.statusCode != 200) {
+          if (res.statusCode === 302) {
+            const redirectUrl = res.headers.location;
+            if (redirectUrl) {
+              const parsedUrl = new URL(redirectUrl);
+              const newService = {
+                endPoint: parsedUrl.pathname + parsedUrl.search, 
+                host: parsedUrl.hostname,
+                port: parsedUrl.port || '' 
+              };
+
+              console.log(`Redirecting to: ${redirectUrl}`);
+              this.sendPostRequest(msg, wres, newService, redirectCount + 1);
+            } else {
+              console.log('Redirect response received, but no location header provided.');
+            }
+          }
+          else if (res.statusCode != 200) {
             console.log("Api call failed with response code " + res.statusCode);
           } 
 	  else {
